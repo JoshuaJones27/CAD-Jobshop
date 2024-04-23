@@ -62,6 +62,7 @@ int main() {
 
         // Find the next job to schedule
         for (int j = 0; j < num_jobs; j++) {
+            #pragma omp parallel for
             for (int k = 0; k < num_machines; k++) {
                 if (!job_completed[j] && jobs[j][k*2] == i % num_machines) {
                     int new_completion_time = (i > 0 ? completion_time[j][k-1] : 0) + processing_time[j][k];
@@ -84,12 +85,31 @@ int main() {
         }
     }
 
-    // Print the completion time for each job on each machine
+    // Printar na consola
+    // for (int i = 0; i < num_jobs; i++) {
+    //     for (int j = 0; j < num_machines; j++) {
+    //         printf("Job %d on Machine %d: Completion Time = %d\n", i, j, completion_time[i][j]);
+    //     }
+    // }
+
+    // Open the output file
+    char output_filename[50];
+    printf("Enter the name of the output file: ");
+    scanf("%s", output_filename);
+    FILE *output_file = fopen(output_filename, "w");
+    if (output_file == NULL) {
+        printf("Error: Failed to open output file\n");
+        exit(1);
+    }
+
+    // Write the completion times to the output file
     for (int i = 0; i < num_jobs; i++) {
         for (int j = 0; j < num_machines; j++) {
-            printf("Job %d on Machine %d: Completion Time = %d\n", i, j, completion_time[i][j]);
+            fprintf(output_file, "Job %d on Machine %d: Completion Time = %d\n", i, j, completion_time[i][j]);
         }
     }
-    
+
+    // Close the output file
+    fclose(output_file);
     return 0;
 }
