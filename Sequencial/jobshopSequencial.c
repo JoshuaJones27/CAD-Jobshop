@@ -8,6 +8,9 @@
 #define MAX_MACHINES 100
 
 int main() {
+
+    double start_time, end_time, total_time;
+    start_time = omp_get_wtime();
     
     // Código para abrir só o ficheiro ft06.jss
     // FILE *file = fopen("../ft/ft06.jss", "r");
@@ -107,9 +110,13 @@ int main() {
         for (int j = 0; j < num_machines; j++) {
             fprintf(output_file, "Job %d on Machine %d: Completion Time = %d\n", i, j, completion_time[i][j]);
         }
+        
     }
-
+    end_time = omp_get_wtime();
+    total_time = end_time - start_time;
+    fprintf(output_file,"Execution time: %f seconds\n", total_time);
     // Close the output file
     fclose(output_file);
+
     return 0;
 }
