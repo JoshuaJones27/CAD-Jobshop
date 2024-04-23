@@ -1,0 +1,3 @@
+Correr o código do jobshopSequencial.c
+    /opt/homebrew/bin/gcc-13 -o jobshopSequencial jobshopSequencial.c
+    ./jobshopSequencial 
