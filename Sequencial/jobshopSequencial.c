@@ -68,7 +68,7 @@ int main()
     }
 
     // Schedule jobs
-    for (int i = 0; i < num_jobs * num_machines; i++)
+    for (int current_task = 0; current_task < num_jobs * num_machines; current_task++)
     {
         int min_completion_time = INT_MAX;
         int next_job = -1;
@@ -77,31 +77,53 @@ int main()
         // Find the next job to schedule
         for (int j = 0; j < num_jobs; j++)
         {
-            // #pragma omp parallel for
-            for (int k = 0; k < num_machines; k++)
+            if (!job_completed[j])
             {
-                if (!job_completed[j] && jobs[j][k * 2] == i % num_machines)
+                for (int k = 0; k < num_machines; k++)
                 {
-                    int new_completion_time = (i > 0 ? completion_time[j][k - 1] : 0) + processing_time[j][k];
-                    if (new_completion_time < min_completion_time)
+                    if (jobs[j][k * 2] == current_task % num_machines)
                     {
-                        min_completion_time = new_completion_time;
-                        next_job = j;
-                        next_machine = k;
+                        int start_time = (k > 0 ? completion_time[j][k - 1] : 0);
+                        int new_completion_time = start_time + processing_time[j][k];
+
+                        if (new_completion_time < min_completion_time)
+                        {
+                            min_completion_time = new_completion_time;
+                            next_job = j;
+                            next_machine = k;
+                        }
                     }
                 }
             }
         }
 
         // Update completion time and machine availability
-        completion_time[next_job][next_machine] = min_completion_time;
-        machine_available_time[next_machine] = min_completion_time;
-
-        // Check if the job is completed
-        if (next_machine == num_machines - 1)
+        if (next_job != -1 && next_machine != -1)
         {
-            job_completed[next_job] = 1;
+            completion_time[next_job][next_machine] = min_completion_time;
+            machine_available_time[next_machine] = min_completion_time;
+            job_completed[next_job] = 1; // Mark job as completed
         }
+    }
+
+    // Output scheduling details for each machine
+    for (int m = 0; m < num_machines; m++)
+    {
+        printf("Machine %d:\n", m);
+        for (int j = 0; j < num_jobs; j++)
+        {
+            for (int k = 0; k < num_machines; k++)
+            {
+                if (jobs[j][k * 2] == m && completion_time[j][k] > 0)
+                {
+                    int start_time = (k > 0 ? completion_time[j][k - 1] : 0);
+                    int end_time = completion_time[j][k];
+                    printf("Job %d, Task %d: Start Time = %d, End Time = %d\n", j, k, start_time, end_time);
+                    break; // Move to the next machine
+                }
+            }
+        }
+        printf("\n");
     }
 
     // Printar na consola
@@ -110,6 +132,33 @@ int main()
     //         printf("Job %d on Machine %d: Completion Time = %d\n", i, j, completion_time[i][j]);
     //     }
     // }
+
+    // Calculate and output optimal schedule length
+    int optimal_schedule_length = completion_time[num_jobs - 1][num_machines - 1];
+    printf("Optimal Schedule Length: %d\n", optimal_schedule_length);
+
+    // Output scheduling details for each machine
+    for (int m = 0; m < num_machines; m++)
+    {
+        printf("Machine %d:\n", m);
+        for (int j = 0; j < num_jobs; j++)
+        {
+            for (int k = 0; k < num_machines; k++)
+            {
+                if (jobs[j][k * 2] == m && !job_completed[j])
+                {
+                    int start_time = (k > 0 ? completion_time[j][k - 1] : 0);
+                    int end_time = start_time + processing_time[j][k];
+                    printf("Job %d, Task %d: Start Time = %d, End Time = %d\n", j, k, start_time, end_time);
+                    completion_time[j][k] = end_time;
+                    machine_available_time[m] = end_time;
+                    job_completed[j] = 1;
+                    break; // Move to the next machine
+                }
+            }
+        }
+        printf("\n");
+    }
 
     // Open the output file
     char output_filename[50];
