@@ -1,3 +1,7 @@
 Correr o código do jobshopSequencial.c
     /opt/homebrew/bin/gcc-13 -fopenmp -o jobshopSequencial jobshopSequencial.c
     ./jobshopSequencial 
+
+Correr o código do jobshopParalelo.c
+    /opt/homebrew/bin/gcc-13 -fopenmp -o jobshopParalelo jobshopParalelo.c
+    ./jobshopParalelo
