@@ -34,4 +34,4 @@ Job 5 on Machine 2: Completion Time = 0
 Job 5 on Machine 3: Completion Time = 0
 Job 5 on Machine 4: Completion Time = 0
 Job 5 on Machine 5: Completion Time = 1
-Execution time: 0.000656 seconds
+Execution time: 0.000206 seconds
