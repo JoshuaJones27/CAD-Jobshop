@@ -23,6 +23,7 @@ int main()
         exit(1);
     }
 
+    // // Código para abrir qualquer ficheiro
     // char filename[50];
     // printf("Enter the name of the file you want to open (e.g., ft06.jss): ");
     // scanf("%s", filename);
