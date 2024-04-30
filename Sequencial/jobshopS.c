@@ -219,59 +219,56 @@ void WriteFile(char *filename)
 int JobShop()
 {
     int time = 0;
-    int jobCompletion[MAX] = {0}; // Array to keep track of the completion time of the last operation for each job
-    int machineTime[MAX] = {0};   // Array to keep track of the completion time of each machine
+    int machineTime[MAX] = {0}; // Array to keep track of the completion time of each machine
 
     // Schedule jobs in order of their total processing time
     for (int i = 0; i < maxJobs; i++)
     {
-        int minTime = INT_MAX;
-        int minMachine = -1;
+        int jobCompletionTime = 0;
 
-        // Find machine with the earliest available time
+        // Schedule operations of the current job sequentially
         for (int j = 0; j < maxMac; j++)
         {
-            if (machineTime[jobM[i][j]] < minTime)
+            int machine = jobM[i][j];
+            int duration = jobTime[i][j];
+
+            // Find the earliest available time on the current machine
+            int earliestAvailableTime = machineTime[machine];
+
+            // Check if there are dependencies with previous operations
+            if (j > 0)
             {
-                minTime = machineTime[jobM[i][j]];
-                minMachine = jobM[i][j];
+                int prevOperationEndTime = jobSolution[i][j - 1] + jobTime[i][j - 1];
+                earliestAvailableTime = max(earliestAvailableTime, prevOperationEndTime);
             }
-        }
 
-        // Ensure total time for job completion is under 20 units
-        if (minTime > 20)
-        {
-            printf("Total time for job completion exceeds 20 units.\n");
-            return -1;
-        }
+            // Update the machine occupation and job solution
+            for (int t = earliestAvailableTime; t < earliestAvailableTime + duration; t++)
+            {
+                Machines[t][machine] = i;
+            }
 
-        // Update machine occupation and job solution
-        InsertJob(minMachine, minTime, jobTime[i][0], i);
-        jobSolution[i][0] = minTime;
-        jobCompletion[i] = minTime + jobTime[i][0];
-        machineTime[minMachine] = jobCompletion[i]; // Update machine completion time
+            // Update completion time for the current job
+            jobSolution[i][j] = earliestAvailableTime;
+            jobCompletionTime = earliestAvailableTime + duration;
 
-        // Update machine completion time for subsequent operations of the same job
-        for (int j = 1; j < maxMac; j++)
-        {
-            InsertJob(jobM[i][j], jobCompletion[i], jobTime[i][j], i);
-            jobSolution[i][j] = jobCompletion[i];
-            jobCompletion[i] += jobTime[i][j];
-            machineTime[jobM[i][j]] = jobCompletion[i]; // Update machine completion time
+            // Update machine completion time
+            machineTime[machine] = jobCompletionTime;
         }
     }
 
-    // Calculate total time for job completion
-    int totalJobCompletionTime = 0;
+    // Find the maximum completion time among all jobs
+    int maxCompletionTime = 0;
     for (int i = 0; i < maxJobs; i++)
     {
-        if (jobCompletion[i] > totalJobCompletionTime)
+        int jobEndTime = jobSolution[i][maxMac - 1] + jobTime[i][maxMac - 1];
+        if (jobEndTime > maxCompletionTime)
         {
-            totalJobCompletionTime = jobCompletion[i];
+            maxCompletionTime = jobEndTime;
         }
     }
 
-    return totalJobCompletionTime;
+    return maxCompletionTime;
 }
 
 bool verifySolution()
