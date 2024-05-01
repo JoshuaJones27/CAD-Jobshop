@@ -1,0 +1,10 @@
+Job 0 on Machine 0: Completion Time = 0
+Job 0 on Machine 1: Completion Time = 2
+Job 0 on Machine 2: Completion Time = 0
+Job 1 on Machine 0: Completion Time = 0
+Job 1 on Machine 1: Completion Time = 1
+Job 1 on Machine 2: Completion Time = 0
+Job 2 on Machine 0: Completion Time = 0
+Job 2 on Machine 1: Completion Time = 0
+Job 2 on Machine 2: Completion Time = 1
+Execution time: 0.000617 seconds
