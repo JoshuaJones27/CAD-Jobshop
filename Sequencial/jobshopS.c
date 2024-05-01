@@ -22,8 +22,6 @@ void ReadFile(char *fileName);
 void WriteFile(char *filename);
 int JobShop();
 int VerifySolution();
-void ShiftingBottleneckHeuristic();
-int CalculateMakespan();
 int max(int a, int b);
 
 int max(int a, int b)
@@ -31,14 +29,13 @@ int max(int a, int b)
     return (a > b) ? a : b;
 }
 
-int main()
+void initialize_arrays()
 {
-
     for (int i = 0; i < MAX; i++)
     {
         for (int j = 0; j < MAX; j++)
         {
-            jobSolution[i][j] = -1;
+            jobSolution[i][j] = UNASSIGNED;
         }
     }
 
@@ -46,45 +43,24 @@ int main()
     {
         for (int j = 0; j < MAX; j++)
         {
-            Machines[i][j] = -1;
+            Machines[i][j] = UNASSIGNED;
         }
     }
+}
 
-    JobShop();
-    int makespan = CalculateMakespan();
-    printf("Makespan: %d\n", makespan);
+int main()
+{
+
+    initialize_arrays();
 
     clock_t start_time, end_time;
     double total_time;
 
-    // Código para abrir só o ficheiro ft03.jss
-    FILE *file = fopen("../ft/ft03.jss", "r");
-    if (file == NULL)
-    {
-        printf("Error: File not found\n");
-        exit(1);
-    }
-
-    int num_jobs, num_machines;
-
-    fscanf(file, "%d %d", &num_jobs, &num_machines);
-
-    int jobs[num_jobs][num_machines * 2];
-    for (int i = 0; i < num_jobs; i++)
-    {
-        for (int j = 0; j < num_machines * 2; j++)
-        {
-            fscanf(file, "%d", &jobs[i][j]);
-        }
-    }
-
-    fclose(file);
-
-    ReadFile("../ft/ft03.jss");
+    read_file("../ft/ft03.jss");
 
     start_time = clock();
 
-    int time = JobShop();
+    int time = job_shop();
 
     end_time = clock();
     total_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
@@ -96,7 +72,7 @@ int main()
         printf("Job %d: ", i);
         for (int j = 0; j < maxMac; j++)
         {
-            if (jobSolution[i][j] == -1)
+            if (jobSolution[i][j] == UNASSIGNED)
             {
                 printf("\t");
             }
@@ -116,7 +92,7 @@ int main()
 
 bool VerifyPreviousOp(int job, int op)
 {
-    if (op > 0 && jobSolution[job][op - 1] == -1)
+    if (op > 0 && jobSolution[job][op - 1] == UNASSIGNED)
         return false;
     return true;
 }
@@ -179,14 +155,12 @@ void ReadFile(char *fileName)
     }
 
     fscanf(fpInput, "%d %d", &maxJobs, &maxMac);
-    printf("ReadFile: maxJobs = %d, maxMac = %d\n", maxJobs, maxMac); // Print maxJobs and maxMac
 
     for (int i = 0; i < maxJobs; i++)
     {
         for (int j = 0; j < maxMac * 2; j += 2) // Increment by 2 to read pairs of numbers
         {
             fscanf(fpInput, "%d %d", &jobM[i][j / 2], &jobTime[i][j / 2]);
-            printf("ReadFile: Job %d, Machine %d, Time %d\n", i, jobM[i][j / 2], jobTime[i][j / 2]); // Print jobM and jobTime values
         }
     }
 
@@ -316,89 +290,4 @@ bool verifySolution()
     }
 
     return true;
-}
-
-void ShiftingBottleneckHeuristic()
-{
-    int schedule[MAX][MAX];  // The schedule for each machine
-    int completionTime[MAX]; // The completion time for each job
-
-    // Initialize the schedule and completion time
-    for (int i = 0; i < MAX; i++)
-    {
-        for (int j = 0; j < MAX; j++)
-        {
-            schedule[i][j] = -1;
-        }
-        completionTime[i] = 0;
-    }
-
-    // Repeat until all jobs are scheduled
-    while (true)
-    {
-        int maxTime = -1;
-        int bottleneck = -1;
-
-        // Find the bottleneck machine
-        for (int i = 0; i < maxMac; i++)
-        {
-            int time = 0;
-            for (int j = 0; j < maxJobs; j++)
-            {
-                if (schedule[i][j] == -1)
-                {
-                    time += jobTime[j][i];
-                }
-            }
-            if (time > maxTime)
-            {
-                maxTime = time;
-                bottleneck = i;
-            }
-        }
-
-        // If no bottleneck machine is found, all jobs are scheduled
-        if (bottleneck == -1)
-        {
-            break;
-        }
-
-        // Schedule the jobs on the bottleneck machine
-        for (int i = 0; i < maxJobs; i++)
-        {
-            if (schedule[bottleneck][i] == -1)
-            {
-                schedule[bottleneck][i] = max(completionTime[i], maxTime);
-                completionTime[i] = schedule[bottleneck][i] + jobTime[i][bottleneck];
-                maxTime = completionTime[i];
-            }
-        }
-    }
-
-    // Print the schedule
-    for (int i = 0; i < maxMac; i++)
-    {
-        printf("Machine %d: ", i);
-        for (int j = 0; j < maxJobs; j++)
-        {
-            printf("%d ", schedule[i][j]);
-        }
-        printf("\n");
-    }
-}
-
-int CalculateMakespan()
-{
-    int makespan = 0;
-    for (int i = 0; i < maxJobs; i++)
-    {
-        for (int j = 0; j < maxMac; j++)
-        {
-            if (jobSolution[i][j] > makespan)
-            {
-                makespan = jobSolution[i][j];
-            }
-        }
-    }
-    return makespan;
 }
