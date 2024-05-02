@@ -91,11 +91,11 @@ void *scheduleJobs(void *thread_args) {
     for (int i = start_job_index; i < end_job_index; i++) {
         pthread_mutex_lock(&job_mutex[i]);
         for (int j = 0; j < num_machines; j++) {
+            
             int machine = jobs[i][j].machine;
             int time = jobs[i][j].time;
 
             pthread_mutex_lock(&machine_mutex[machine]);
-
             // Find the first free time slot for this machine
             int start_time = max(job_availability[i], machine_availability[machine]);
             while (machine_schedules[machine][start_time] == 1 ) {
