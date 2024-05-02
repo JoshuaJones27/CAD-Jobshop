@@ -43,8 +43,6 @@ int main() {
         return 1;
     }
 
-    clock_t start = clock();
-
     int num_jobs, num_machines;
     fscanf(file, "%d %d", &num_jobs, &num_machines);
 
@@ -55,6 +53,8 @@ int main() {
     }
 
     fclose(file);
+
+    clock_t start = clock();
     
     // Initialize machine availability times
     int machine_availability[NUM_MACHINES] = {0};
