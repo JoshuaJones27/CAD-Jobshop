@@ -7,6 +7,7 @@
 
 #define MAX 200
 #define MAXTIME 100000
+#define UNASSIGNED -1
 
 int maxJobs, maxMac = 0;
 
@@ -56,11 +57,11 @@ int main()
     clock_t start_time, end_time;
     double total_time;
 
-    read_file("../ft/ft03.jss");
+    ReadFile("../ft/ft03.jss");
 
     start_time = clock();
 
-    int time = job_shop();
+    int time = JobShop();
 
     end_time = clock();
     total_time = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
@@ -102,7 +103,7 @@ int InsertJob(int machine, int time, int jobDuration, int jobNr)
     // Check if the machine is available for the entire duration of the job
     for (int i = time; i < time + jobDuration; i++)
     {
-        if (Machines[i][machine] != -1)
+        if (Machines[i][machine] != UNASSIGNED)
         {
             printf("InsertJob: Machine %d is not available at time %d\n", machine, i);
             return 0;
@@ -131,7 +132,7 @@ void PrintJobs(int y, int x, int totalTime)
         printf("Job %d: ", i);
         for (int j = 0; j < x; j++)
         {
-            if (jobSolution[i][j] == -1)
+            if (jobSolution[i][j] == UNASSIGNED)
             {
                 printf("\t");
             }
@@ -265,7 +266,7 @@ bool verifySolution()
         for (int machine = 0; machine < MAX; machine++)
         {
             int job = Machines[time][machine];
-            if (job != -1)
+            if (job != UNASSIGNED)
             {
                 if (time < jobSolution[job][0] || time > jobSolution[job][maxMac - 1])
                 {

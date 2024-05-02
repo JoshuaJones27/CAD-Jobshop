@@ -1,160 +1,162 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
-#include <limits.h>
-#include <string.h>
 
-#define MAX_JOBS 100
-#define MAX_MACHINES 100
+#define NUM_JOBS 3
+#define NUM_MACHINES 3
 
-int main() {
-    double start_time, end_time, total_time;
-    start_time = omp_get_wtime();
+typedef struct
+{
+    int machine;
+    int time;
+} Job;
 
-    char filename[50];
-    printf("Enter the name of the file you want to open (e.g., ft06.jss): ");
-    scanf("%s", filename);
+typedef struct
+{
+    int job;
+    int machine;
+    int start_time;
+    int end_time;
+} Schedule;
 
-    char filepath[60] = "../ft/";
-    strcat(filepath, filename);
+int max(int a, int b)
+{
+    return (a > b) ? a : b;
+}
 
-    FILE *file = fopen(filepath, "r");
-    if (file == NULL) {
-        printf("Error: File not found\n");
-        exit(1);
+int main()
+{
+    Job jobs[NUM_JOBS][NUM_MACHINES];
+    int machine_time[NUM_MACHINES] = {0};
+    Schedule schedule[NUM_JOBS * NUM_MACHINES];
+    int current_operation[NUM_JOBS] = {0};
+
+    // Declare and initialize machine_availability and job_end_times
+    int machine_availability[NUM_MACHINES];
+    int job_end_times[NUM_JOBS];
+    for (int i = 0; i < NUM_MACHINES; i++)
+    {
+        machine_availability[i] = 0;
+    }
+    for (int i = 0; i < NUM_JOBS; i++)
+    {
+        job_end_times[i] = 0;
+    }
+
+    // Read job data from file
+    FILE *file = fopen("../ft/ft03.jss", "r");
+    if (file == NULL)
+    {
+        printf("Could not open file\n");
+        return 1;
     }
 
     int num_jobs, num_machines;
     fscanf(file, "%d %d", &num_jobs, &num_machines);
 
-    int jobs[MAX_JOBS][MAX_MACHINES * 2];
-    for (int i = 0; i < num_jobs; i++) {
-        for (int j = 0; j < num_machines * 2; j++) {
-            fscanf(file, "%d", &jobs[i][j]);
+// Parallelize reading job data from file
+#pragma omp parallel for
+    for (int i = 0; i < num_jobs; i++)
+    {
+        for (int j = 0; j < num_machines; j++)
+        {
+            fscanf(file, "%d %d", &jobs[i][j].machine, &jobs[i][j].time);
         }
     }
 
     fclose(file);
 
-    int processing_time[MAX_JOBS][MAX_MACHINES] = {0};
-    int completion_time[MAX_JOBS][MAX_MACHINES] = {0};
-    int machine_available_time[MAX_MACHINES] = {0};
-    int job_completed[MAX_JOBS] = {0};
-
-    // Initialize processing_time from jobs array
-    for (int i = 0; i < num_jobs; i++) {
-        for (int j = 0; j < num_machines; j++) {
-            processing_time[i][j] = jobs[i][j * 2 + 1];
-        }
+    // Create an array of job indices
+    int job_order[num_jobs];
+    for (int i = 0; i < num_jobs; i++)
+    {
+        job_order[i] = i;
     }
 
-    // Schedule jobs in parallel using OpenMP
-    // Teste 1
-// #pragma omp parallel for shared(completion_time, machine_available_time, job_completed) schedule(dynamic)
-//     for (int i = 0; i < num_jobs * num_machines; i++) {
-//         int min_completion_time = INT_MAX;
-//         int next_job = -1;
-//         int next_machine = -1;
-
-//         // Find the next job to schedule
-//         for (int j = 0; j < num_jobs; j++) {
-//             for (int k = 0; k < num_machines; k++) {
-//                 if (!job_completed[j] && jobs[j][k * 2] == i % num_machines) {
-//                     int new_completion_time = (i > 0 ? completion_time[j][k - 1] : 0) + processing_time[j][k];
-//                     if (new_completion_time < min_completion_time) {
-//                         min_completion_time = new_completion_time;
-//                         next_job = j;
-//                         next_machine = k;
-//                     }
-//                 }
-//             }
-//         }
-
-//         // Update completion time and machine availability
-// #pragma omp critical
-//         {
-//             completion_time[next_job][next_machine] = min_completion_time;
-//             machine_available_time[next_machine] = min_completion_time;
-
-//             // Check if the job is completed
-//             if (next_machine == num_machines - 1) {
-//                 job_completed[next_job] = 1;
-//             }
-//         }
-//     }
-
-// Teste 2
-
-    #pragma omp parallel for shared(completion_time, machine_available_time, job_completed) schedule(dynamic)
-    for (int i = 0; i < num_jobs * num_machines; i++) {
-    int min_completion_time = INT_MAX;
-    int next_job = -1;
-    int next_machine = -1;
-
-    // Maintain a list of unscheduled jobs
-    int unscheduled_jobs[MAX_JOBS];
-    int unscheduled_jobs_count = 0;
-    for (int j = 0; j < num_jobs; j++) {
-        if (!job_completed[j]) {
-            unscheduled_jobs[unscheduled_jobs_count++] = j;
-        }
-    }
-
-    // Find the next job to schedule from the list of unscheduled jobs
-    for (int j = 0; j < unscheduled_jobs_count; j++) {
-        int job = unscheduled_jobs[j];
-        for (int k = 0; k < num_machines; k++) {
-            if (jobs[job][k * 2] == i % num_machines) {
-                int new_completion_time = (i > 0 ? completion_time[job][k - 1] : 0) + processing_time[job][k];
-                if (new_completion_time < min_completion_time) {
-                    min_completion_time = new_completion_time;
-                    next_job = job;
-                    next_machine = k;
-                }
+    // Sort the job indices based on the total processing time of each job
+    for (int i = 0; i < num_jobs - 1; i++)
+    {
+        for (int j = 0; j < num_jobs - i - 1; j++)
+        {
+            int total_time_j = 0;
+            int total_time_j_plus_1 = 0;
+            for (int k = 0; k < num_machines; k++)
+            {
+                total_time_j += jobs[job_order[j]][k].time;
+                total_time_j_plus_1 += jobs[job_order[j + 1]][k].time;
+            }
+            if (total_time_j > total_time_j_plus_1)
+            {
+                // Swap job_order[j] and job_order[j + 1]
+                int temp = job_order[j];
+                job_order[j] = job_order[j + 1];
+                job_order[j + 1] = temp;
             }
         }
     }
 
-    // Update completion time and machine availability
-#pragma omp critical
+    // Schedule the jobs in the sorted order
+    for (int i = 0; i < num_jobs; i++)
     {
-        completion_time[next_job][next_machine] = min_completion_time;
-        machine_available_time[next_machine] = min_completion_time;
+        int job = job_order[i];
+        for (int j = 0; j < num_machines; j++)
+        {
+            // Get the machine for the job
+            int machine = jobs[job][j].machine;
 
-        // Check if the job is completed
-        if (next_machine == num_machines - 1) {
-            job_completed[next_job] = 1;
-        }
-    }
-}
+            // Schedule the job at the time the machine and the job both become available
+            int start_time = max(machine_availability[machine], job_end_times[job]);
 
-    // Open the output file
-    char output_filename[50];
-    printf("Enter the name of the output file: ");
-    scanf("%s", output_filename);
-    FILE *output_file = fopen(output_filename, "w");
-    if (output_file == NULL) {
-        printf("Error: Failed to open output file\n");
-        exit(1);
-    }
+            // Update the schedule
+            schedule[job * num_machines + j].start_time = start_time;
+            schedule[job * num_machines + j].end_time = start_time + jobs[job][j].time;
 
-    // Write the completion times to the output file
-    for (int i = 0; i < num_jobs; i++) {
-        for (int j = 0; j < num_machines; j++) {
-            fprintf(output_file, "Job %d on Machine %d: Completion Time = %d\n", i, j, completion_time[i][j]);
+            // Update machine availability time and job end time
+            machine_availability[machine] = schedule[job * num_machines + j].end_time;
+            job_end_times[job] = schedule[job * num_machines + j].end_time;
         }
     }
 
-    end_time = omp_get_wtime();
-    total_time = end_time - start_time;
-    //Printar no ficheiro criado
-    fprintf(output_file, "Execution time: %f seconds\n", total_time);
+    // Populate the schedule array and update machine availability times
+    for (int i = 0; i < num_jobs; i++)
+    {
+        for (int j = 0; j < num_machines; j++)
+        {
+            // Get the machine for the job
+            int machine = jobs[i][j].machine; // Adjust for 0-indexing
 
-    // Close the output file
-    fclose(output_file);
+            // Schedule the job at the time the machine and the job both become available
+            int start_time = max(machine_availability[machine], job_end_times[i]);
 
-    //Printar na consola
-    printf("Execution time: %f seconds\n", total_time);
+            // Update the schedule
+            schedule[i * num_machines + j].job = i;
+            schedule[i * num_machines + j].machine = machine;
+            schedule[i * num_machines + j].start_time = start_time;
+            schedule[i * num_machines + j].end_time = start_time + jobs[i][j].time;
+
+            // Update machine availability time and job end time
+            machine_availability[machine] = schedule[i * num_machines + j].end_time;
+            job_end_times[i] = schedule[i * num_machines + j].end_time;
+        }
+    }
+
+// Parallelize printing the schedule
+#pragma omp parallel for
+    for (int i = 0; i < num_jobs * num_machines; i++)
+    {
+        printf("Job %d starts at time %d on machine %d\n", schedule[i].job, schedule[i].start_time, schedule[i].machine);
+    }
+    // Initialize makespan
+    int makespan = 0;
+
+// Parallelize calculation of makespan
+#pragma omp parallel for reduction(max : makespan)
+    for (int i = 0; i < num_jobs * num_machines; i++)
+    {
+        makespan = max(makespan, schedule[i].end_time);
+    }
+
+    printf("The makespan is %d\n", makespan);
 
     return 0;
 }
