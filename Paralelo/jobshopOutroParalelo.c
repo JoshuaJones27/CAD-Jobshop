@@ -34,16 +34,16 @@ Schedule schedule[MAX_JOBS * MAX_MACHINES];
 pthread_mutex_t machine_mutex[MAX_MACHINES];
 pthread_mutex_t job_mutex[MAX_JOBS];
 pthread_mutex_t schedule_mutex;
-pthread_barrier_t barrier;
 int machine_schedules[MAX_MACHINES][MAX_TIME];
+int machine_end_time[MAX_MACHINES] = {0};
 
 void *scheduleJobs(void *thread_args);
-void initializeMutexAndBarrier(int num_threads);
+void initializeMutex(int num_threads);
 void readJobDataFromFile(char *input_file);
 void createThreadsAndAssignJobs(int num_threads, pthread_t *threads, ThreadArgs *thread_args);
 void writeScheduleToOutputFile(char *output_file);
 int calculateMakespan();
-void destroyMutexAndBarrier();
+void destroyMutex();
 int max(int a, int b);
 
 int main(int argc, char *argv[]) {
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     
     readJobDataFromFile(input_file);
-    initializeMutexAndBarrier(num_threads);
+    initializeMutex(num_threads);
     createThreadsAndAssignJobs(num_threads, threads, thread_args);
 
     gettimeofday(&end, NULL);
@@ -72,12 +72,21 @@ int main(int argc, char *argv[]) {
 
     writeScheduleToOutputFile(output_file);
 
-    // Destroy mutexes and barrier
-    destroyMutexAndBarrier();
+    // Destroy mutexes
+    destroyMutex();
 
     printf("Time taken: %f seconds\n", time_taken);
 
     return 0;
+}
+
+bool isOverlapping(int machine, int start_time, int end_time) {
+    for (int t = start_time; t < end_time; t++) {
+        if (machine_schedules[machine][t] == 1) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void *scheduleJobs(void *thread_args) {
@@ -86,7 +95,6 @@ void *scheduleJobs(void *thread_args) {
     int end_job_index = args->end_job_index;
 
     int job_availability[MAX_JOBS] = {0};
-    int machine_availability[MAX_MACHINES] = {0}; 
 
     for (int i = start_job_index; i < end_job_index; i++) {
         pthread_mutex_lock(&job_mutex[i]);
@@ -97,16 +105,16 @@ void *scheduleJobs(void *thread_args) {
 
             pthread_mutex_lock(&machine_mutex[machine]);
             // Find the first free time slot for this machine
-            int start_time = max(job_availability[i], machine_availability[machine]);
-            while (machine_schedules[machine][start_time] == 1 ) {
+            int start_time = max(job_availability[i], machine_end_time[machine]);
+            while (isOverlapping(machine, start_time, start_time + time)) {
                 start_time++;
             }
-
+            
             int end_time = start_time + time;
-
+            
             // Update job and machine availability
             job_availability[i] = end_time;
-            machine_availability[machine] = end_time;
+            machine_end_time[machine]= end_time;
 
             pthread_mutex_lock(&schedule_mutex);
             // Update the machine's schedule
@@ -125,12 +133,10 @@ void *scheduleJobs(void *thread_args) {
         pthread_mutex_unlock(&job_mutex[i]);
     }
 
-    pthread_barrier_wait(&barrier);
-
     return NULL;
 }
 
-void initializeMutexAndBarrier(int num_threads) {
+void initializeMutex(int num_threads) {
     // Initialize semaphores for each machine
     for (int i = 0; i < MAX_MACHINES; i++) {
         pthread_mutex_init(&machine_mutex[i], NULL);
@@ -142,8 +148,6 @@ void initializeMutexAndBarrier(int num_threads) {
     }
     pthread_mutex_init(&schedule_mutex, NULL);
 
-    // Initialize the barrier
-    pthread_barrier_init(&barrier, NULL, num_threads);
 }
 
 void readJobDataFromFile(char *input_file) {
@@ -221,7 +225,7 @@ int calculateMakespan() {
 }
 
 // Remember to destroy the mutexes when you're done
-void destroyMutexAndBarrier() {
+void destroyMutex() {
     // Destroy semaphores for each machine
     for (int i = 0; i < MAX_MACHINES; i++) {
         pthread_mutex_destroy(&machine_mutex[i]);
@@ -233,8 +237,6 @@ void destroyMutexAndBarrier() {
     }
     pthread_mutex_destroy(&schedule_mutex);
 
-    // Destroy the barrier
-    pthread_barrier_destroy(&barrier);
 }
 
 int max(int a, int b) {
