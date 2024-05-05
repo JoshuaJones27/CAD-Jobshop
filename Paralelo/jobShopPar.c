@@ -8,7 +8,7 @@
 
 #define MAX_JOBS 100
 #define MAX_MACHINES 100
-#define MAX_TIME 1000
+#define MAX_TIME 1000000
 
 typedef struct {
     int machine;
