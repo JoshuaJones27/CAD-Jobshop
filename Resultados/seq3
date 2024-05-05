@@ -8,3 +8,4 @@ Job 2 - Machine 1 - Start 12 - End 16
 Job 2 - Machine 2 - Start 16 - End 19
 Job 2 - Machine 0 - Start 19 - End 20
 The makespan is 20
+Time taken: 0.000007 seconds

@@ -1,320 +1,143 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <limits.h>
+#include <string.h>
 #include <time.h>
-#include <stdbool.h>
 
-#define MAX_JOBS 100
-#define MAX_MACHINES 100
+#define NUM_JOBS 100
+#define NUM_MACHINES 100
 
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-#define MAX 1000
-#define MAXTIME 1000000
-
-int maxJobs, maxMachines = 0;
-
-int thread_count;
-
-int jobTime[MAX][MAX];
-int jobMachine[MAX][MAX];
-
-int jobSolution[MAX_JOBS][MAX_MACHINES];
-int Machines[MAXTIME][MAX];
-
-void ReadFile(char *filename)
+typedef struct
 {
-    // Open the FT03 file
-    FILE *file = fopen("../ft/ft03.jss", "r");
-    if (file == NULL)
-    {
-        printf("Error: File not found\n");
-        exit(1);
-    }
+    int machine;
+    int time;
+} Job;
 
-    char buffer[2048 * 10];
-
-    int x, y = 0;
-
-    // Read the number of jobs and machines from the file
-    fscanf(file, "%d %d", &maxJobs, &maxMachines);
-    printf("Matrix size:\nNr Lines: %d\nNr Columns: %d\n", maxJobs, maxMachines);
-
-    // Read the file content into the buffer
-    fread(buffer, sizeof(*buffer), ARRAY_SIZE(buffer), file);
-
-    char *delimitar = "\r\n";
-
-    char *pointer = strtok(buffer, delimitar);
-
-    int nr, job, time, machine = 0;
-    long i = 0;
-
-    // Parse the buffer and populate the jobMachine and jobTime arrays
-    while (pointer != NULL)
-    {
-        nr = atoi(pointer);
-
-        if (i == maxMachines * 2)
-        {
-            machine = 0;
-            time = 0;
-            i = 0;
-            job++;
-        }
-
-        if (i % 2 == 0)
-        {
-            jobMachine[job][machine] = nr;
-            machine++;
-        }
-        else
-        {
-            jobTime[job][time] = nr;
-            time++;
-        }
-
-        pointer = strtok(NULL, delimitar);
-        i++;
-    }
-
-    fclose(file);
-}
-
-void WriteFile(char *filename)
+typedef struct
 {
-    FILE *file = fopen(filename, "w+");
-    if (file == NULL)
-    {
-        printf("Error: Unable to open file\n");
-        exit(1);
-    }
-    for (int i = 0; i < maxJobs; i++)
-    {
-        for (int j = 0; j < maxMachines; j++)
-        {
-            // Rever este codigo Machines por jobSolution
-            fprintf(file, "%d ", Machines[i][j]);
-        }
-        fprintf(file, "\n");
-    }
-    fclose(file);
-}
+    int job;
+    int machine;
+    int start_time;
+    int end_time;
+} Schedule;
 
-// Insert Jobs
-int InsertJob(int machine, int time, int jobDuration, int jobNr)
+int max(int a, int b)
 {
-    int slots = 0;
-    for (int i = time; i < time; i++)
-    {
-        if (Machines[i][machine] == -1)
-        {
-            slots++;
-        }
-    }
-
-    if (slots == jobDuration)
-    {
-        for (int i = time; i < time + jobDuration; i++)
-        {
-            Machines[i][machine] = jobNr;
-        }
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-// Printjobs
-void ListJobs(int y, int x, int totalTime)
-{
-    print("\t");
-    for (int i = 0; i < x; i++)
-    {
-        printf(" 0-%d ", i);
-    }
-    printf("\n");
-
-    for (int i = 0; i < y; i++)
-    {
-        printf("Job %d\t", i);
-        for (int j = 0; j < x; j++)
-        {
-            // Rever este codigo jobMachine e jobTime por jobSolution
-            printf(" %d-%d ", jobMachine[i][j], jobTime[i][j]);
-        }
-        printf("\n");
-    }
-    print("Total time: %d\n", totalTime);
-}
-
-bool verifyPreviousOp(int job, int op)
-{
-    if (op > 0)
-    {
-        if (jobSolution[job][op - 1] == -1)
-        {
-            return false;
-        }
-        else
-        {
-            return true;
-        }
-    }
-    else
-    {
-        return true;
-    }
-}
-
-int countMachineSlots(int startTime, int endTime, int jobNr, int machineNr)
-{
-    int count = 0;
-    for (int i = startTime; i < endTime; i++)
-    {
-        if (Machines[i][machineNr] == jobNr)
-        {
-            count++;
-        }
-    }
-    return count;
-}
-
-int VerifySolution()
-{
-    for (int i = 0; i < maxJobs; i++)
-        for (int j = 0; j < maxMachines; j++)
-        {
-
-            if (j > 1 && jobSolution[i][j - 1] > jobSolution[i][j])
-            {
-                return 1;
-            }
-            int r = countMachineSlots(jobSolution[i][j], jobSolution[i][j] + jobTime[i][j], i, jobMachine[i][j]);
-
-            if (r == 0)
-                return 2;
-            if (r != jobTime[i][j])
-                return 3;
-        }
-
-    return 0;
-}
-
-void printMachineArray(int time)
-{
-    print("\t");
-    for (int i = 0; i < maxMachines; i++)
-    {
-        printf("Machine %d: ", i);
-        for (int j = 0; j < time; j++)
-        {
-            printf("%d ", Machines[j][i]);
-        }
-        printf("\n");
-    }
-
-    printf("\n");
-    for (int i = 0; i < time; i++)
-    {
-        printf("Time %d: ", i);
-        for (int j = 0; j < maxMachines; j++)
-        {
-            printf("%d ", Machines[i][j]);
-        }
-        printf("\n");
-    }
-}
-
-int countMachineSlots(int startTime, int endTime, int jobNr, int machineNr)
-{
-    int count = 0;
-    for (int i = startTime; i < endTime; i++)
-    {
-        if (Machines[i][machineNr] == jobNr)
-        {
-            count++;
-        }
-    }
-    return count;
+    return (a > b) ? a : b;
 }
 
 int main()
 {
+    // Define variables
+    Job jobs[NUM_JOBS][NUM_MACHINES];
+    int machine_time[NUM_MACHINES] = {0};
+    Schedule schedule[NUM_JOBS * NUM_MACHINES];
+    int current_operation[NUM_JOBS] = {0};
+    char file_name[50];
+    char output_file_name[50];
 
-    int num_jobs, num_machines;
+    // Prompt user for file name
+    printf("Type the file name to read\n");
+    scanf("%s", file_name);
 
-    read_input("../ft/ft03.jss", &num_jobs, &num_machines);
+    // Construct file path
+    char openPath[100] = "../ft/";
+    strncat(openPath, file_name, strlen(file_name));
 
-    write_output(num_jobs, num_machines);
-
-    return 0;
-}
-
-void read_input(const char *filename, int *num_jobs, int *num_machines, Job jobs[MAX_JOBS])
-{
-    FILE *file = fopen(filename, "r");
+    // Read job data from file
+    FILE *file = fopen(openPath, "r");
     if (file == NULL)
     {
-        printf("Error: File not found\n");
-        exit(1);
+        printf("Could not open file\n");
+        return 1;
     }
 
-    fscanf(file, "%d %d", num_jobs, num_machines);
+    int num_jobs, num_machines;
+    fscanf(file, "%d %d", &num_jobs, &num_machines);
 
-    for (int i = 0; i < *num_jobs; i++)
+    // Read job data from file
+    for (int i = 0; i < num_jobs; i++)
     {
-        int num_operations;
-        fscanf(file, "%d", &num_operations);
-        jobs[i].num_operations = num_operations;
-
-        for (int j = 0; j < num_operations; j++)
+        for (int j = 0; j < num_machines; j++)
         {
-            fscanf(file, "%d %d", &jobs[i].operations[j].machine, &jobs[i].operations[j].duration);
+            fscanf(file, "%d %d", &jobs[i][j].machine, &jobs[i][j].time);
         }
     }
 
     fclose(file);
-}
 
-void schedule_jobs(int num_jobs, Job jobs[MAX_JOBS], int completion_time[MAX_JOBS][MAX_MACHINES])
-{
-    int machine_available_time[MAX_MACHINES] = {0};
+    // Start timer
+    clock_t start = clock();
 
-    for (int j = 0; j < num_jobs; j++)
-    {
-        // Sort operations based on machine index
-        qsort(jobs[j].operations, jobs[j].num_operations, sizeof(Operation), compare);
+    // Initialize machine availability times
+    int machine_availability[NUM_MACHINES] = {0};
+    // Initialize job end times
+    int job_end_times[NUM_JOBS] = {0};
 
-        int start_time = 0;
-        for (int op = 0; op < jobs[j].num_operations; op++)
-        {
-            int machine = jobs[j].operations[op].machine;
-            int duration = jobs[j].operations[op].duration;
-
-            int operation_start_time = (machine_available_time[machine] > start_time) ? machine_available_time[machine] : start_time;
-
-            completion_time[j][machine] = operation_start_time + duration;
-
-            machine_available_time[machine] = completion_time[j][machine];
-
-            start_time = completion_time[j][machine];
-        }
-    }
-}
-
-void write_output(int num_jobs, int num_machines, int completion_time[MAX_JOBS][MAX_MACHINES])
-{
-    printf("Job Schedule:\n");
+    // Populate the schedule array and update machine availability times
     for (int i = 0; i < num_jobs; i++)
     {
-        printf("Job %d:\t", i);
         for (int j = 0; j < num_machines; j++)
         {
-            printf("M%d: %d\t", j, completion_time[i][j]);
+            // Get the machine for the job
+            int machine = jobs[i][j].machine; // Adjust for 0-indexing
+
+            // Schedule the job at the time the machine and the job both become available
+            int start_time = max(machine_availability[machine], job_end_times[i]);
+
+            // Update the schedule
+            schedule[i * num_machines + j].job = i;
+            schedule[i * num_machines + j].machine = machine;
+            schedule[i * num_machines + j].start_time = start_time;
+            schedule[i * num_machines + j].end_time = start_time + jobs[i][j].time;
+
+            // Update machine availability time and job end time
+            machine_availability[machine] = schedule[i * num_machines + j].end_time;
+            job_end_times[i] = schedule[i * num_machines + j].end_time;
         }
-        printf("\n");
     }
+
+    // Initialize makespan
+    int makespan = 0;
+
+    // Calculate makespan
+    for (int i = 0; i < num_jobs * num_machines; i++)
+    {
+        if (schedule[i].end_time > makespan)
+        {
+            makespan = schedule[i].end_time;
+        }
+    }
+
+    clock_t end = clock();
+    double time_taken = ((double)end - start) / CLOCKS_PER_SEC;
+
+    printf("Enter the name of the file to write the results to: ");
+    scanf("%s", output_file_name);
+
+    char resultsPath[100] = "../Resultados/";
+    strncat(resultsPath, output_file_name, strlen(output_file_name));
+
+    // Open the output file
+    FILE *output_file = fopen(resultsPath, "w");
+    if (output_file == NULL)
+    {
+        printf("Could not open or create file %s\n", output_file_name);
+        return 1;
+    }
+
+    // Print the schedule
+    for (int i = 0; i < num_jobs * num_machines; i++)
+    {
+        printf("Job %d - Machine %d - Start %d - End %d\n", schedule[i].job, schedule[i].machine, schedule[i].start_time, schedule[i].end_time);
+        fprintf(output_file, "Job %d - Machine %d - Start %d - End %d\n", schedule[i].job, schedule[i].machine, schedule[i].start_time, schedule[i].end_time);
+    }
+
+    printf("The makespan is %d\n", makespan);
+    printf("Time taken: %f seconds\n", time_taken);
+    fprintf(output_file, "The makespan is %d\n", makespan);
+    fprintf(output_file, "Time taken: %f seconds\n", time_taken);
+
+    fclose(output_file);
+
+    return 0;
 }
