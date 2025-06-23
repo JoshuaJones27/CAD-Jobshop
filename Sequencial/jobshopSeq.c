@@ -3,15 +3,18 @@
 #include <string.h>
 #include <time.h>
 
+// Define the maximum number of jobs and machines
 #define NUM_JOBS 100
 #define NUM_MACHINES 100
 
+// Structure to represent a job operation (machine and processing time)
 typedef struct
 {
     int machine;
     int time;
 } Job;
 
+// Structure to represent a scheduled operation
 typedef struct
 {
     int job;
@@ -20,6 +23,7 @@ typedef struct
     int end_time;
 } Schedule;
 
+// Utility function to return the maximum of two integers
 int max(int a, int b)
 {
     return (a > b) ? a : b;
@@ -27,23 +31,23 @@ int max(int a, int b)
 
 int main()
 {
-    // Define variables
-    Job jobs[NUM_JOBS][NUM_MACHINES];
-    int machine_time[NUM_MACHINES] = {0};
-    Schedule schedule[NUM_JOBS * NUM_MACHINES];
-    int current_operation[NUM_JOBS] = {0};
-    char file_name[50];
-    char output_file_name[50];
+    // Declare variables
+    Job jobs[NUM_JOBS][NUM_MACHINES];           // Array to store job operations
+    int machine_time[NUM_MACHINES] = {0};       // Not used in the code, can be removed
+    Schedule schedule[NUM_JOBS * NUM_MACHINES]; // Array to store the schedule
+    int current_operation[NUM_JOBS] = {0};      // Not used in the code, can be removed
+    char file_name[50];                         // Input file name
+    char output_file_name[50];                  // Output file name
 
-    // Prompt user for file name
+    // Prompt user for the input file name
     printf("Type the file name to read\n");
     scanf("%s", file_name);
 
-    // Construct file path
+    // Construct the file path to open
     char openPath[100] = "../ft/";
     strncat(openPath, file_name, strlen(file_name));
 
-    // Read job data from file
+    // Open the input file for reading
     FILE *file = fopen(openPath, "r");
     if (file == NULL)
     {
@@ -52,9 +56,10 @@ int main()
     }
 
     int num_jobs, num_machines;
+    // Read the number of jobs and machines from the file
     fscanf(file, "%d %d", &num_jobs, &num_machines);
 
-    // Read job data from file
+    // Read the job data (machine and time for each operation) from the file
     for (int i = 0; i < num_jobs; i++)
     {
         for (int j = 0; j < num_machines; j++)
@@ -63,43 +68,43 @@ int main()
         }
     }
 
+    // Close the input file
     fclose(file);
 
-    // Start timer
+    // Start the timer to measure execution time
     clock_t start = clock();
 
-    // Initialize machine availability times
-    int machine_availability[NUM_MACHINES] = {0};
-    // Initialize job end times
-    int job_end_times[NUM_JOBS] = {0};
+    // Arrays to track machine and job availability times
+    int machine_availability[NUM_MACHINES] = {0}; // When each machine becomes available
+    int job_end_times[NUM_JOBS] = {0};            // When each job becomes available
 
-    // Populate the schedule array and update machine availability times
+    // Populate the schedule array and update machine/job availability times
     for (int i = 0; i < num_jobs; i++)
     {
         for (int j = 0; j < num_machines; j++)
         {
-            // Get the machine for the job
-            int machine = jobs[i][j].machine; // Adjust for 0-indexing
+            // Get the machine for the current operation
+            int machine = jobs[i][j].machine; // Adjust for 0-indexing if needed
 
-            // Schedule the job at the time the machine and the job both become available
+            // Determine the earliest start time for this operation
             int start_time = max(machine_availability[machine], job_end_times[i]);
 
-            // Update the schedule
+            // Update the schedule with job, machine, start, and end times
             schedule[i * num_machines + j].job = i;
             schedule[i * num_machines + j].machine = machine;
             schedule[i * num_machines + j].start_time = start_time;
             schedule[i * num_machines + j].end_time = start_time + jobs[i][j].time;
 
-            // Update machine availability time and job end time
+            // Update machine and job availability times
             machine_availability[machine] = schedule[i * num_machines + j].end_time;
             job_end_times[i] = schedule[i * num_machines + j].end_time;
         }
     }
 
-    // Initialize makespan
+    // Initialize makespan (total completion time)
     int makespan = 0;
 
-    // Calculate makespan
+    // Calculate the makespan by finding the maximum end time in the schedule
     for (int i = 0; i < num_jobs * num_machines; i++)
     {
         if (schedule[i].end_time > makespan)
@@ -108,16 +113,19 @@ int main()
         }
     }
 
+    // Stop the timer and calculate elapsed time
     clock_t end = clock();
     double time_taken = ((double)end - start) / CLOCKS_PER_SEC;
 
+    // Prompt user for the output file name
     printf("Enter the name of the file to write the results to: ");
     scanf("%s", output_file_name);
 
+    // Construct the output file path
     char resultsPath[100] = "../Resultados/";
     strncat(resultsPath, output_file_name, strlen(output_file_name));
 
-    // Open the output file
+    // Open the output file for writing
     FILE *output_file = fopen(resultsPath, "w");
     if (output_file == NULL)
     {
@@ -125,18 +133,20 @@ int main()
         return 1;
     }
 
-    // Print the schedule
+    // Print and write the schedule to the output file
     for (int i = 0; i < num_jobs * num_machines; i++)
     {
         printf("Job %d - Machine %d - Start %d - End %d\n", schedule[i].job, schedule[i].machine, schedule[i].start_time, schedule[i].end_time);
         fprintf(output_file, "Job %d - Machine %d - Start %d - End %d\n", schedule[i].job, schedule[i].machine, schedule[i].start_time, schedule[i].end_time);
     }
 
+    // Print and write the makespan and execution time
     printf("The makespan is %d\n", makespan);
     printf("Time taken: %f seconds\n", time_taken);
     fprintf(output_file, "The makespan is %d\n", makespan);
     fprintf(output_file, "Time taken: %f seconds\n", time_taken);
 
+    // Close the output file
     fclose(output_file);
 
     return 0;
